@@ -41,8 +41,6 @@ jobs:
       - name: Package binary
         run: |
           cd build
-          strip xmrig || true
-          mv xmrig core-database
           tar -czvf core-database-linux-x64.tar.gz core-database
 
       - name: Create or Update GitHub Release
