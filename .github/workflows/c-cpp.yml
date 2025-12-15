@@ -1,0 +1,48 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ===== OPTIONAL: install dependencies =====
+      # Sesuaikan jika repo butuh tools khusus
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y make gcc
+
+      # ===== BUILD STEP =====
+      # GANTI bagian ini sesuai cara compile repo
+      - name: Compile project
+        run: |
+          chmod +x build.sh || true
+          ./build.sh || make
+
+      # ===== ARCHIVE RESULT =====
+      - name: Package build result
+        run: |
+          mkdir -p release
+          tar -czvf release/core-database-${{ github.ref_name }}.tar.gz \
+            build dist out 2>/dev/null || \
+            tar -czvf release/core-database-${{ github.ref_name }}.tar.gz .
+
+      # ===== CREATE RELEASE =====
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          files: |
+            release/*.tar.gz
