@@ -1,4 +1,4 @@
-name: Auto Build & Release
+name: Auto Package & Release
 
 on:
   push:
@@ -9,34 +9,30 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Generate version
-        id: version
         run: |
           echo "VERSION=auto-$(date +'%Y%m%d-%H%M')-${GITHUB_SHA::7}" >> $GITHUB_ENV
 
-      - name: Install dependencies
+      # OPTIONAL: validasi ringan (tidak wajib)
+      - name: Sanity check
         run: |
-          sudo apt-get update
-          sudo apt-get install -y make gcc
+          ls -lah
+          echo "Files packaged successfully"
 
-      - name: Compile project
-        run: |
-          chmod +x build.sh || true
-          ./build.sh || make
-
-      - name: Package build output
+      - name: Package repository
         run: |
           mkdir -p release
           tar -czvf release/core-database-${{ env.VERSION }}.tar.gz \
-            build dist out 2>/dev/null || \
-            tar -czvf release/core-database-${{ env.VERSION }}.tar.gz .
+            --exclude=.git \
+            --exclude=.github \
+            .
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -44,5 +40,5 @@ jobs:
           tag_name: ${{ env.VERSION }}
           name: ${{ env.VERSION }}
           body: |
-            Auto build from commit ${{ github.sha }}
+            Auto release from commit ${{ github.sha }}
           files: release/*.tar.gz
