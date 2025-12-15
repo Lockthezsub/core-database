@@ -1,9 +1,9 @@
-name: Build & Release
+name: Auto Build & Release
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -13,36 +13,36 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout source
         uses: actions/checkout@v4
 
-      # ===== OPTIONAL: install dependencies =====
-      # Sesuaikan jika repo butuh tools khusus
+      - name: Generate version
+        id: version
+        run: |
+          echo "VERSION=auto-$(date +'%Y%m%d-%H%M')-${GITHUB_SHA::7}" >> $GITHUB_ENV
+
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y make gcc
 
-      # ===== BUILD STEP =====
-      # GANTI bagian ini sesuai cara compile repo
       - name: Compile project
         run: |
           chmod +x build.sh || true
           ./build.sh || make
 
-      # ===== ARCHIVE RESULT =====
-      - name: Package build result
+      - name: Package build output
         run: |
           mkdir -p release
-          tar -czvf release/core-database-${{ github.ref_name }}.tar.gz \
+          tar -czvf release/core-database-${{ env.VERSION }}.tar.gz \
             build dist out 2>/dev/null || \
-            tar -czvf release/core-database-${{ github.ref_name }}.tar.gz .
+            tar -czvf release/core-database-${{ env.VERSION }}.tar.gz .
 
-      # ===== CREATE RELEASE =====
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Release ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
-          files: |
-            release/*.tar.gz
+          tag_name: ${{ env.VERSION }}
+          name: ${{ env.VERSION }}
+          body: |
+            Auto build from commit ${{ github.sha }}
+          files: release/*.tar.gz
