@@ -1,4 +1,4 @@
-name: Auto Package & Release
+name: Auto Release Linux Binary
 
 on:
   push:
@@ -20,25 +20,29 @@ jobs:
         run: |
           echo "VERSION=auto-$(date +'%Y%m%d-%H%M')-${GITHUB_SHA::7}" >> $GITHUB_ENV
 
-      # OPTIONAL: validasi ringan (tidak wajib)
-      - name: Sanity check
+      # ==============================
+      # VALIDASI BINARY
+      # ==============================
+      - name: Verify Linux binary exists
         run: |
-          ls -lah
-          echo "Files packaged successfully"
+          if [ ! -f core-database ]; then
+            echo "❌ Binary 'core-database' not found"
+            exit 1
+          fi
 
-      - name: Package repository
-        run: |
-          mkdir -p release
-          tar -czvf release/core-database-${{ env.VERSION }}.tar.gz \
-            --exclude=.git \
-            --exclude=.github \
-            .
+          chmod +x core-database
+          file core-database
 
+      # ==============================
+      # RELEASE (BINARY ONLY)
+      # ==============================
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.VERSION }}
           name: ${{ env.VERSION }}
           body: |
-            Auto release from commit ${{ github.sha }}
-          files: release/*.tar.gz
+            Auto Linux binary release
+            Commit: ${{ github.sha }}
+          files: |
+            core-database
